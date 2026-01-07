@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fitness Coach – Squat & Push-up Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient-dark: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+            --bg-gradient-light: radial-gradient(circle at top, #e5e7eb 0, #f9fafb 55%, #e5e7eb 100%);
+
+            --header-bg-dark: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.96));
+            --header-bg-light: linear-gradient(135deg, rgba(249, 250, 251, 0.96), rgba(229, 231, 235, 0.98));
+
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --accent-1: #4c6fff;
+            --accent-2: #ff4fad;
+            --text-main-dark: #e5e7eb;
+            --text-main-light: #1f2933;
+            --text-muted-dark: #6b7280;
+            --text-muted-light: #6b7280;
+            --success: #22c55e;
+            --error: #ef4444;
+            --shadow-soft: 0 16px 40px rgba(15, 23, 42, 0.22);
+            --radius-xl: 24px;
+            --radius-lg: 18px;
+            --transition-fast: 0.18s ease-out;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg-gradient-dark);
+            color: var(--text-main-dark);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        body[data-theme="light"] {
+            background: var(--bg-gradient-light);
+            color: var(--text-main-light);
+        }
+
+        .page-shell {
+            width: 100%;
+            max-width: 1440px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* Top header bar */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 22px;
+            border-radius: var(--radius-xl);
+            background: var(--header-bg-dark);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(18px);
+        }
+
+        body[data-theme="light"] .header-bar {
+            background: var(--header-bg-light);
+            border-color: rgba(148, 163, 184, 0.6);
+            box-shadow: 0 12px 30px rgba(148, 163, 184, 0.5);
+        }
+
+        .app-title-block {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .app-logo {
+            width: 46px;
+            height: 46px;
+            border-radius: 18px;
+            background: radial-gradient(circle at 20% 20%, #fde68a, #f97316 40%, #7c3aed 90%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            color: #f9fafb;
+            box-shadow: 0 10px 25px rgba(251, 191, 36, 0.4);
+        }
+
+        .app-title-text {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .app-title-text h1 {
+            font-size: 1.4rem;
+            letter-spacing: 0.03em;
+            color: #e5e7eb;
+        }
+
+        .app-title-text span {
+            font-size: 0.78rem;
+            color: #9ca3af;
+        }
+
+        body[data-theme="light"] .app-title-text h1 {
+            color: #111827;
+        }
+
+        body[data-theme="light"] .app-title-text span {
+            color: #4b5563;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            font-size: 0.78rem;
+            color: #e5e7eb;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.3), transparent 60%);
+        }
+
+        .meta-pill strong {
+            font-weight: 600;
+        }
+
+        .meta-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+        }
+
+        body[data-theme="light"] .meta-pill {
+            background: rgba(255, 255, 255, 0.9);
+            color: #111827;
+            border-color: rgba(148, 163, 184, 0.8);
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            background: radial-gradient(circle at 20% 0, #22c55e, #16a34a 70%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 24px rgba(16, 185, 129, 0.7);
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(16, 185, 129, 0.9);
+        }
+
+        body[data-theme="light"] .theme-toggle {
+            background: radial-gradient(circle at 20% 0, #fbbf24, #f97316 70%);
+            box-shadow: 0 10px 24px rgba(248, 181, 64, 0.7);
+        }
+
+        /* Main layout */
+        .container {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr);
+            grid-template-rows: minmax(0, 1fr);
+            gap: 18px;
+            min-height: calc(100vh - 110px);
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* Stats panel */
+        .stats-panel {
+            background: radial-gradient(circle at top left, rgba(248, 250, 252, 1), rgba(226, 232, 240, 0.96));
+            border-radius: var(--radius-xl);
+            padding: 18px 20px 20px;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-panel::before {
+            content: "";
+            position: absolute;
+            inset: -40%;
+            background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.18), transparent 55%);
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        body[data-theme="light"] .stats-panel {
+            background: radial-gradient(circle at top left, #ffffff, #e5e7eb);
+        }
+
+        .stats-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stats-header-main {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stats-header-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-header-title span {
+            font-size: 1.4rem;
+        }
+
+        .stats-header-sub {
+            font-size: 0.82rem;
+            color: var(--text-muted-light);
+        }
+
+        .stats-header-sub span {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .quick-glance {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .mini-stat {
+            min-width: 120px;
+            padding: 8px 10px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.03);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .mini-stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+        }
+
+        .mini-stat-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .mini-stat-tag {
+            font-size: 0.68rem;
+            color: #6b7280;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr);
+            gap: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chart-box {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 14px 14px 10px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .chart-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .chart-subtitle {
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+
+        .chart-pill {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            background: rgba(79, 70, 229, 0.05);
+            color: #4f46e5;
+            border: 1px solid rgba(129, 140, 248, 0.35);
+        }
+
+        .chart-box canvas {
+            width: 100%;
+            height: 220px;
+        }
+
+        /* Exercise cards */
+        .exercise-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            color: #e5e7eb;
+            padding: 2px 4px;
+        }
+
+        .exercise-section-header h2 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: #9ca3af;
+        }
+
+        .exercise-section-header span {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        body[data-theme="light"] .exercise-section-header {
+            color: #111827;
+        }
+
+        body[data-theme="light"] .exercise-section-header h2 {
+            color: #4b5563;
+        }
+
+        .exercise-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .exercise-card {
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.9));
+            border-radius: var(--radius-xl);
+            padding: 22px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.9);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(75, 85, 99, 0.8);
+        }
+
+        .exercise-card::before {
+            content: "";
+            position: absolute;
+            inset: -40%;
+            opacity: 0.12;
+            background:
+                radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.8), transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(248, 113, 113, 0.8), transparent 50%);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            transition: opacity 0.25s ease-out;
+        }
+
+        .exercise-card:hover::before {
+            opacity: 0.22;
+        }
+
+        .exercise-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 22px 60px rgba(15, 23, 42, 1);
+            border-color: rgba(129, 140, 248, 0.9);
+        }
+
+        .exercise-card.active {
+            border: 1px solid rgba(94, 234, 212, 0.9);
+            box-shadow: 0 24px 70px rgba(45, 212, 191, 0.8);
+        }
+
+        body[data-theme="light"] .exercise-card {
+            background: radial-gradient(circle at top left, #f9fafb, #e5e7eb);
+            border-color: rgba(148, 163, 184, 0.8);
+            box-shadow: 0 12px 35px rgba(148, 163, 184, 0.8);
+        }
+
+        .exercise-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 22px;
+            background: radial-gradient(circle at 20% 20%, #fee2e2, #fb7185);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: #111827;
+            box-shadow: 0 16px 35px rgba(248, 113, 113, 0.65);
+        }
+
+        .exercise-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #e5e7eb;
+            margin-bottom: 4px;
+        }
+
+        .exercise-count {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+
+        body[data-theme="light"] .exercise-name {
+            color: #111827;
+        }
+
+        body[data-theme="light"] .exercise-count {
+            color: #4b5563;
+        }
+
+        .exercise-meta-row {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .exercise-tag {
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.5);
+        }
+
+        body[data-theme="light"] .exercise-meta-row {
+            color: #6b7280;
+        }
+
+        body[data-theme="light"] .exercise-tag {
+            background: #f9fafb;
+            border-color: rgba(209, 213, 219, 1);
+            color: #4b5563;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(34, 197, 94, 0.16);
+            color: #bbf7d0;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            display: none;
+            border: 1px solid rgba(34, 197, 94, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .exercise-card.active .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+        }
+
+        /* Chat button */
+        .chatbot-btn {
+            position: fixed;
+            bottom: 26px;
+            right: 26px;
+            width: 64px;
+            height: 64px;
+            background: radial-gradient(circle at 30% 0, #bef264, #4ade80 35%, #22c55e 65%, #16a34a 100%);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 15px 40px rgba(22, 163, 74, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: #022c22;
+            transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, bottom 0.18s ease-out;
+            z-index: 1000;
+        }
+
+        .chatbot-btn:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 20px 60px rgba(22, 163, 74, 0.9);
+        }
+
+        /* CHATBOT POPUP */
+        .chatbot-popup {
+            position: fixed;
+            bottom: 100px;
+            right: 26px;
+            width: 420px;
+            max-width: calc(100% - 32px);
+            height: 560px;
+            background: radial-gradient(circle at top left, #0f172a, #020617);
+            border-radius: 22px;
+            box-shadow: 0 30px 70px rgba(15, 23, 42, 0.96);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 999;
+            border: 1px solid rgba(148, 163, 184, 0.55);
+        }
+
+        .chatbot-popup.active {
+            display: flex;
+        }
+
+        body[data-theme="light"] .chatbot-popup {
+            background: radial-gradient(circle at top left, #f9fafb, #e5e7eb);
+            border-color: rgba(148, 163, 184, 0.8);
+            box-shadow: 0 24px 60px rgba(148, 163, 184, 0.9);
+        }
+
+        .chatbot-header {
+            background: radial-gradient(circle at 0% 0%, #22c55e, #16a34a 50%, #15803d 100%);
+            color: white;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chatbot-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chatbot-avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(15, 23, 42, 0.16);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .chatbot-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .chatbot-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.92;
+        }
+
+        .chatbot-close {
+            background: rgba(15, 23, 42, 0.4);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .preset-questions {
+            background: rgba(15, 23, 42, 0.92);
+            padding: 11px 14px;
+            border-bottom: 1px solid rgba(30, 64, 175, 0.7);
+        }
+
+        body[data-theme="light"] .preset-questions {
+            background: #e5e7eb;
+            border-bottom-color: rgba(148, 163, 184, 0.9);
+        }
+
+        .preset-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        body[data-theme="light"] .preset-label {
+            color: #6b7280;
+        }
+
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .preset-btn {
+            background: radial-gradient(circle at 20% 0, #22c55e, #16a34a 70%, #14532d 100%);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background 0.12s;
+            box-shadow: 0 8px 18px rgba(16, 185, 129, 0.55);
+        }
+
+        .preset-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 26px rgba(16, 185, 129, 0.85);
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 14px 12px;
+            background: radial-gradient(circle at top, #020617, #020617 55%, #000 100%);
+        }
+
+        body[data-theme="light"] .chatbot-messages {
+            background: #f9fafb;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 9px 13px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.bot .message-bubble {
+            background: rgba(15, 23, 42, 0.96);
+            color: #e5e7eb;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+        }
+
+        .message.user .message-bubble {
+            background: radial-gradient(circle at 20% 0, #22c55e, #16a34a 70%);
+            color: #022c22;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.7);
+        }
+
+        body[data-theme="light"] .message.bot .message-bubble {
+            background: #e5e7eb;
+            color: #111827;
+            border-color: #d1d5db;
+            box-shadow: 0 8px 18px rgba(148, 163, 184, 0.7);
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 7px 13px;
+            background: rgba(15, 23, 42, 0.96);
+            border-radius: 16px;
+            width: fit-content;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.7);
+            margin: 0 0 12px 6px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        body[data-theme="light"] .typing-indicator {
+            background: #e5e7eb;
+            box-shadow: 0 6px 14px rgba(148, 163, 184, 0.7);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            background: #9ca3af;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        .chatbot-input {
+            padding: 10px 12px;
+            border-top: 1px solid rgba(30, 64, 175, 0.7);
+            background: rgba(15, 23, 42, 0.96);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chatbot-input input {
+            flex: 1;
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            border-radius: 999px;
+            padding: 9px 14px;
+            font-size: 0.85rem;
+            outline: none;
+            background: rgba(15, 23, 42, 0.84);
+            color: #e5e7eb;
+        }
+
+        .chatbot-input input::placeholder {
+            color: #6b7280;
+        }
+
+        .chatbot-input input:focus {
+            border-color: #22c55e;
+        }
+
+        .chatbot-send-btn {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 20% 0, #22c55e, #15803d 85%);
+            border: none;
+            border-radius: 50%;
+            color: #f9fafb;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 10px 22px rgba(34, 197, 94, 0.7);
+        }
+
+        .chatbot-send-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        body[data-theme="light"] .chatbot-input {
+            background: #e5e7eb;
+            border-top-color: rgba(148, 163, 184, 0.9);
+        }
+
+        body[data-theme="light"] .chatbot-input input {
+            background: #ffffff;
+            color: #111827;
+            border-color: #d1d5db;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 18px;
+            right: 20px;
+            background: #0f172a;
+            padding: 12px 16px;
+            border-radius: 16px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+            display: none;
+            z-index: 1000;
+            min-width: 260px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            color: #e5e7eb;
+            font-size: 0.8rem;
+        }
+
+        .notification.show {
+            display: block;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        .notification.success {
+            border-left: 4px solid #22c55e;
+        }
+
+        .notification.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .notification.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        body[data-theme="light"] .notification {
+            background: #f9fafb;
+            color: #111827;
+            box-shadow: 0 16px 36px rgba(148, 163, 184, 0.9);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(320px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            background: radial-gradient(circle at top left, #111827, #020617);
+            padding: 28px 26px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            color: #e5e7eb;
+            min-width: 260px;
+            box-shadow: 0 24px 64px rgba(15, 23, 42, 1);
+        }
+
+        .spinner {
+            border: 4px solid rgba(31, 41, 55, 0.8);
+            border-top: 4px solid #22c55e;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 18px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        body[data-theme="light"] .loading-content {
+            background: radial-gradient(circle at top left, #f9fafb, #e5e7eb);
+            color: #111827;
+            border-color: #cbd5f5;
+            box-shadow: 0 22px 60px rgba(148, 163, 184, 1);
+        }
+
+        /* Scrollbar */
+        .chatbot-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chatbot-messages::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        .chatbot-messages::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        .chatbot-messages::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        body[data-theme="light"] .chatbot-messages::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        body[data-theme="light"] .chatbot-messages::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .right-column {
+                order: -1;
+            }
+
+            .chatbot-popup {
+                right: 16px;
+                left: 16px;
+                height: 70vh;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 14px;
+            }
+
+            .header-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .charts-container {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .exercise-row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="page-shell">
+        <!-- TOP HEADER -->
+        <header class="header-bar">
+            <div class="app-title-block">
+                <div class="app-logo">🏋️</div>
+                <div class="app-title-text">
+                    <h1>AI Fitness Coach Dashboard</h1>
+                    <span>Real-time form feedback • Squats & Push-ups tracker</span>
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="meta-pill">
+                    <span class="meta-dot"></span>
+                    <strong>Live</strong> session ready
+                </div>
+                <div class="meta-pill">
+                    <strong>Goal:</strong> Stronger squats & push-ups
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <span id="themeIcon">☀️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="container">
+            <!-- LEFT: charts and stats -->
+            <section class="left-column">
+                <div class="stats-panel">
+                    <div class="stats-header-row">
+                        <div class="stats-header-main">
+                            <div class="stats-header-title">
+                                <span>📊</span> Weekly Performance Overview
+                            </div>
+                            <div class="stats-header-sub">
+                                Track how your <span>squats</span> and <span>push-ups</span> are trending over this week.
+                            </div>
+                        </div>
+                        <div class="quick-glance">
+                            <div class="mini-stat">
+                                <div class="mini-stat-label">This week total</div>
+                                <div class="mini-stat-value" id="weeklyTotalLabel">– reps</div>
+                                <div class="mini-stat-tag">Squats + push-ups</div>
+                            </div>
+                            <div class="mini-stat">
+                                <div class="mini-stat-label">Today focus</div>
+                                <div class="mini-stat-value">Form quality</div>
+                                <div class="mini-stat-tag">Let the AI coach guide you</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-container">
+                        <div class="chart-box">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Daily Volume (This Week)</div>
+                                    <div class="chart-subtitle">Compare squats vs push-ups per day</div>
+                                </div>
+                                <div class="chart-pill">Live updated</div>
+                            </div>
+                            <canvas id="barChart"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Weekly Progress Trend</div>
+                                    <div class="chart-subtitle">Last 4 weeks of total reps</div>
+                                </div>
+                                <div class="chart-pill">Consistency view</div>
+                            </div>
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: exercise cards -->
+            <section class="right-column">
+                <div class="exercise-section-header">
+                    <h2>Choose your session</h2>
+                    <span>Click a card, then follow the webcam window</span>
+                </div>
+
+                <div class="exercise-row">
+                    <div class="exercise-card" onclick="startWorkout('squats')" id="squatsCard">
+                        <div class="status-badge">
+                            <span class="status-dot"></span> ACTIVE SET
+                        </div>
+                        <div class="exercise-icon">🦵</div>
+                        <div class="exercise-name">Squat Session</div>
+                        <div class="exercise-count" id="squatCount">Total: 0 this week</div>
+                        <div class="exercise-meta-row">
+                            <span class="exercise-tag">Targets: glutes & quads</span>
+                            <span class="exercise-tag">AI checks depth & knees</span>
+                        </div>
+                    </div>
+
+                    <div class="exercise-card" onclick="startWorkout('pushups')" id="pushupsCard">
+                        <div class="status-badge">
+                            <span class="status-dot"></span> ACTIVE SET
+                        </div>
+                        <div class="exercise-icon">💪</div>
+                        <div class="exercise-name">Push-up Session</div>
+                        <div class="exercise-count" id="pushupCount">Total: 0 this week</div>
+                        <div class="exercise-meta-row">
+                            <span class="exercise-tag">Targets: chest & triceps</span>
+                            <span class="exercise-tag">AI checks plank line</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- CHAT BUTTON -->
+    <button class="chatbot-btn" onclick="toggleChat()" aria-label="Open fitness coach chat">💬</button>
+
+    <!-- CHATBOT POPUP -->
+    <div class="chatbot-popup" id="chatbotPopup">
+        <div class="chatbot-header">
+            <div class="chatbot-header-left">
+                <div class="chatbot-avatar">🤖</div>
+                <div>
+                    <div class="chatbot-title">AI Form & Training Coach</div>
+                    <div class="chatbot-subtitle">Ask anything about form, sets, reps, or recovery.</div>
+                </div>
+            </div>
+            <button class="chatbot-close" onclick="toggleChat()" aria-label="Close chat">×</button>
+        </div>
+
+        <div class="preset-questions">
+            <div class="preset-label">Quick prompts</div>
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="sendPresetQuestion('How can I improve my squat form?')">Improve squat form</button>
+                <button class="preset-btn" onclick="sendPresetQuestion('What is the best warm-up routine before squats and push-ups?')">Warm-up routine</button>
+                <button class="preset-btn" onclick="sendPresetQuestion('How many squats and push-ups should I do daily as a beginner?')">Beginner daily reps</button>
+                <button class="preset-btn" onclick="sendPresetQuestion('Give me tips for building muscle with bodyweight only.')">Build muscle</button>
+                <button class="preset-btn" onclick="sendPresetQuestion('How can I prevent knee and shoulder injuries while training?')">Prevent injuries</button>
+                <button class="preset-btn" onclick="sendPresetQuestion('What should I eat before and after this workout?')">Pre / post-workout food</button>
+            </div>
+        </div>
+
+        <div class="chatbot-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    👋 I’m your AI coach. Start a squat or push-up session, then ask me anything about form, breathing, pacing, or recovery.
+                </div>
+            </div>
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-input">
+            <input type="text" id="chatInput" placeholder="Ask about form, reps, or training..." onkeypress="handleKeyPress(event)">
+            <button class="chatbot-send-btn" onclick="sendMessage()" id="sendBtn" aria-label="Send message">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <div id="notificationText"></div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Starting your workout...</h3>
+            <p>The webcam window will pop up – follow the on-screen cues and press “q” to save.</p>
+        </div>
+    </div>
+
+    <script>
+        let barChart, lineChart;
+        let currentWorkoutType = null;
+        let statusCheckInterval = null;
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notificationText');
+
+            notification.className = 'notification ' + type + ' show';
+            text.textContent = message;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // ----------------- THEME CONTROL -----------------
+
+        function applyTheme(theme) {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            if (!icon) return;
+
+            if (theme === 'light') {
+                body.setAttribute('data-theme', 'light');
+                icon.textContent = '🌙'; // show moon -> next will be dark
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                icon.textContent = '☀️'; // show sun -> next will be light
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            try {
+                localStorage.setItem('fitnessTheme', next);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        (function initTheme() {
+            let saved = null;
+            try {
+                saved = localStorage.getItem('fitnessTheme');
+            } catch (e) {
+                saved = null;
+            }
+            applyTheme(saved || 'dark');
+        })();
+
+        // ----------------- WORKOUT CONTROL -----------------
+
+        async function startWorkout(type) {
+            try {
+                const status = await fetch('/api/workout_status');
+                const statusData = await status.json();
+
+                if (statusData.running) {
+                    showNotification('A workout is already in progress!', 'error');
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            document.getElementById('loadingOverlay').classList.add('show');
+
+            try {
+                const response = await fetch('/api/start_workout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ type: type })
+                });
+
+                const data = await response.json();
+                document.getElementById('loadingOverlay').classList.remove('show');
+
+                if (data.success) {
+                    currentWorkoutType = type;
+                    showNotification(
+                        type.charAt(0).toUpperCase() + type.slice(1) +
+                        ' workout started! Look for the webcam window.',
+                        'success'
+                    );
+
+                    const cardId = type === 'squats' ? 'squatsCard' : 'pushupsCard';
+                    document.getElementById(cardId).classList.add('active');
+
+                    startStatusCheck();
+                } else {
+                    showNotification(data.error || 'Failed to start workout', 'error');
+                }
+            } catch (error) {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                showNotification('Error connecting to server: ' + error.message, 'error');
+            }
+        }
+
+        function startStatusCheck() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+
+            statusCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/workout_status');
+                    const data = await response.json();
+
+                    if (!data.running && currentWorkoutType) {
+                        const cardId = currentWorkoutType === 'squats' ? 'squatsCard' : 'pushupsCard';
+                        document.getElementById(cardId).classList.remove('active');
+
+                        showNotification('Workout completed! Charts updated.', 'success');
+                        currentWorkoutType = null;
+                        clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+
+                        updateCharts();
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                }
+            }, 2000);
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/workout_data');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error loading workout data:', error);
+                return {
+                    daily: {
+                        squats: [10, 15, 20, 25, 30, 0, 0],
+                        pushups: [5, 10, 15, 20, 25, 0, 0]
+                    },
+                    weekly: {
+                        squats: [50, 75, 100, 125],
+                        pushups: [25, 50, 75, 100]
+                    },
+                    currentDay: 0,
+                    currentWeek: 3
+                };
+            }
+        }
+
+        function getWeeklyTotal(exercise, data) {
+            return data.daily[exercise].reduce((a, b) => a + b, 0);
+        }
+
+        function updateCounters(data) {
+            const squatWeekly = getWeeklyTotal('squats', data);
+            const pushupWeekly = getWeeklyTotal('pushups', data);
+            const totalWeekly = squatWeekly + pushupWeekly;
+
+            document.getElementById('squatCount').textContent =
+                'Total: ' + squatWeekly + ' this week';
+            document.getElementById('pushupCount').textContent =
+                'Total: ' + pushupWeekly + ' this week';
+
+            const weeklyTotalLabel = document.getElementById('weeklyTotalLabel');
+            if (weeklyTotalLabel) {
+                weeklyTotalLabel.textContent = totalWeekly + ' reps';
+            }
+        }
+
+        async function initCharts() {
+            const data = await loadData();
+
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Squats',
+                        data: data.daily.squats,
+                        backgroundColor: 'rgba(79, 70, 229, 0.9)',
+                    }, {
+                        label: 'Push-ups',
+                        data: data.daily.pushups,
+                        backgroundColor: 'rgba(236, 72, 153, 0.9)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#111827',
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#6b7280',
+                                font: { size: 10 }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#6b7280',
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.35)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    datasets: [{
+                        label: 'Squats',
+                        data: data.weekly.squats,
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3
+                    }, {
+                        label: 'Push-ups',
+                        data: data.weekly.pushups,
+                        borderColor: 'rgba(236, 72, 153, 1)',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#111827',
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#6b7280',
+                                font: { size: 10 }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#6b7280',
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.35)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            updateCounters(data);
+        }
+
+        async function updateCharts() {
+            const data = await loadData();
+
+            barChart.data.datasets[0].data = data.daily.squats;
+            barChart.data.datasets[1].data = data.daily.pushups;
+            barChart.update();
+
+            lineChart.data.datasets[0].data = data.weekly.squats;
+            lineChart.data.datasets[1].data = data.weekly.pushups;
+            lineChart.update();
+
+            updateCounters(data);
+        }
+
+        // ----------------- CHATBOT -----------------
+
+        function toggleChat() {
+            const popup = document.getElementById('chatbotPopup');
+            popup.classList.toggle('active');
+        }
+
+        function addMessage(text, isUser = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + (isUser ? 'user' : 'bot');
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.textContent = text;
+
+            messageDiv.appendChild(bubbleDiv);
+            messagesContainer.appendChild(messageDiv);
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.add('active');
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.remove('active');
+        }
+
+        async function sendMessageToGemini(message) {
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                return data.reply || "No reply from server.";
+            } catch (error) {
+                return '❌ Error: ' + error.message;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            addMessage(message, true);
+            input.value = '';
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+
+            showTypingIndicator();
+
+            const response = await sendMessageToGemini(message);
+
+            hideTypingIndicator();
+            addMessage(response, false);
+            sendBtn.disabled = false;
+        }
+
+        function sendPresetQuestion(question) {
+            const input = document.getElementById('chatInput');
+            input.value = question;
+            sendMessage();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // ----------------- INIT -----------------
+
+        setInterval(updateCharts, 5000);
+        initCharts();
+
+        (async function () {
+            try {
+                const response = await fetch('/api/workout_status');
+                const data = await response.json();
+                if (data.running) {
+                    showNotification('A workout is currently in progress', 'info');
+                    startStatusCheck();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+    </script>
+</body>
+</html>
